@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Deloitte Auditor Enterprise Chat UI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 20px;
+            color: #333;
+        }
+
+        h1 {
+            color: #003366;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            border: 2px solid #003366;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 16px;
+            resize: none;
+            margin-bottom: 10px;
+        }
+
+        #sendButton {
+            background-color: #003366;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            margin-right: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        #cancelButton {
+            background-color: #800080;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        #sendButton:hover {
+            background-color: #002244;
+        }
+
+        #cancelButton:hover {
+            background-color: #660066;
+        }
+
+        #responseContainer {
+            margin-top: 20px;
+            background-color: #e0e0e0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        #responseText {
+            color: #333;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+<h1>Tax Prompt</h1>
+<textarea id="questionInput" placeholder="Enter your tax-related question"></textarea>
+<div>
+    <button id="sendButton">Send</button>
+    <button id="cancelButton">Cancel</button>
+</div>
+<div id="responseContainer">
+    <h2>Response</h2>
+    <div id="responseText"></div>
+</div>
+<script>
+    document.getElementById('sendButton').addEventListener('click', function () {
+        const question = document.getElementById('questionInput').value.trim();
+
+        if (!question) {
+            document.getElementById('responseText').innerHTML = `<p style="color: red;">Please enter a question before sending.</p>`;
+            return;
+        }
+
+        fetch(`http://localhost:8080/api/tax/ask?question=${encodeURIComponent(question)}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(response => {
+                // Check the response content type to confirm it's JSON
+                console.log('Response:', response); // Log the response object
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    return response.json();
+                } else {
+                    // Log the response text for further investigation
+                    return response.text().then(text => {
+                        console.error('Received unexpected response format:', text);
+                        throw new Error("Received an unexpected response format (not JSON).");
+                    });
+                }
+            })
+            .then(data => {
+                // Format response to handle line breaks and Markdown if needed
+                const formattedAnswer = data.answer
+                    .replace(/\n/g, '<br>') // Convert line breaks to HTML line breaks
+                    .replace(/(\*\*)(.*?)\1/g, '<b>$2</b>'); // Basic Markdown bold handling (optional)
+
+                // Display the formatted response in the frontend
+                document.getElementById('responseText').innerHTML = `<p>${formattedAnswer}</p>`;
+                console.log('Received JSON Data:', data); // Log the data received
+            })
+            .catch(error => {
+                document.getElementById('responseText').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                console.error('Error fetching response:', error);
+            });
+    });
+
+    document.getElementById('cancelButton').addEventListener('click', function () {
+        document.getElementById('questionInput').value = '';
+        document.getElementById('responseText').innerHTML = '';
+    });
+</script>
+</body>
+</html>
